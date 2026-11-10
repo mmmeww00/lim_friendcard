@@ -1,11 +1,11 @@
-// Firebase 콘솔 > 프로젝트 설정 > 내 앱(웹)에 있는 값을 그대로 붙여 넣으세요.
+// Firebase 연결 설정 (friendcard-database)
 export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCWBUvWT5pPAfyuMjHSeBG1d_NuB_mSE1o",
+  authDomain: "friendcard-database.firebaseapp.com",
+  projectId: "friendcard-database",
+  storageBucket: "friendcard-database.firebasestorage.app",
+  messagingSenderId: "194238827030",
+  appId: "1:194238827030:web:c74fc156fd69895ada8337"
 };
 
 // 관리자 계정 이메일 (Firebase Authentication에 이 이메일로 관리자 사용자를 만들어 둡니다)
