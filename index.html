@@ -94,7 +94,7 @@ nav.tabs .cnt{font-family:var(--body);font-size:12px;margin-left:4px;opacity:.75
 .fk:hover{border-color:var(--accent)}
 .fk .open{position:absolute;inset:0;border:0;background:transparent;border-radius:16px;z-index:1}
 .fk .pic{aspect-ratio:3/4;border-radius:11px;background:var(--soft);overflow:hidden;display:grid;place-items:center;max-width:100%}
-.fk .pic img{width:100%;height:100%;object-fit:cover;display:block}
+.fk .pic img{width:100%;height:100%;object-fit:contain;display:block}
 .fk .txt{padding:0 4px;display:flex;flex-direction:column;gap:2px;min-width:0}
 .fk .ch{font-family:var(--display);font-size:13px;color:var(--deep)}
 .fk .ko{font-size:14px;line-height:1.35;word-break:keep-all;overflow-wrap:anywhere}
@@ -158,7 +158,7 @@ dl.info dd.jp{font-family:var(--jp)}
 .rc{flex:0 0 108px;border:2px solid var(--line);background:var(--paper);border-radius:13px;padding:5px 5px 8px;display:flex;flex-direction:column;gap:5px;text-align:left;position:relative}
 .rc:hover{border-color:var(--accent)}
 .rp{aspect-ratio:3/4;border-radius:9px;background:var(--soft);overflow:hidden;display:block}
-.rp img{width:100%;height:100%;object-fit:cover;display:block}
+.rp img{width:100%;height:100%;object-fit:contain;display:block}
 .rt{position:absolute;top:9px;left:9px;font-family:var(--display);font-size:11px;border-radius:7px;padding:1px 6px;background:var(--paper);color:var(--deep);box-shadow:0 1px 3px rgba(40,14,26,.2)}
 .rt.same{background:var(--accent);color:var(--on-accent)}
 .rn{font-size:12px;line-height:1.3;padding:0 2px;word-break:keep-all;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -179,8 +179,10 @@ form{display:flex;flex-direction:column;gap:14px}
 .f input:focus,.f textarea:focus{border-color:var(--accent);outline:0}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media (max-width:420px){.two{grid-template-columns:1fr}}
-.drop{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;aspect-ratio:3/4;max-width:100%;border:2px dashed var(--line);border-radius:14px;background:var(--bg);color:var(--ink-soft);font-size:13px;text-align:center;overflow:hidden;cursor:pointer}
-.drop.qr{aspect-ratio:3/4}
+.imgs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.imgs>div{min-width:0}
+.drop{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:150px;max-width:100%;border:2px dashed var(--line);border-radius:14px;background:var(--bg);color:var(--ink-soft);font-size:13px;text-align:center;overflow:hidden;cursor:pointer}
+@media (max-width:420px){.drop{height:118px;font-size:12px}.drop svg{width:22px;height:22px}.drop strong{font-size:14px}}
 .drop svg{width:28px;height:28px;stroke:var(--deep);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .drop strong{font-family:var(--display);font-weight:400;font-size:16px;color:var(--deep)}
 .drop img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--bg)}
@@ -228,7 +230,7 @@ form{display:flex;flex-direction:column;gap:14px}
   <header class="top">
     <div class="brand">
       <small>아이프리버스 프렌드 카드</small>
-      <h1>프렌카 <i>보관함</i></h1>
+      <h1>프렌카 <i>아카이브</i></h1>
       <p>등록된 프렌카를 찾아보고, QR을 바로 띄워 쓰세요.</p>
     </div>
     <div class="acts">
@@ -469,12 +471,12 @@ function showForm(id){
   draft={id:r?r.id:null,card:null,qr:null,thumb:null,oldCard:null,oldQr:null};
   open(head(r?'프렌카 수정':'프렌카 등록')+`
     <form id="fkForm" class="f" novalidate>
-      <div class="two">
-        <div><span class="lb">프렌카 이미지<em>필수</em></span>
-          <label class="drop" id="dropCard" for="inCard">${ICON_UP}<strong>이미지 선택</strong>카드 앞면 사진</label>
+      <div class="imgs">
+        <div><span class="lb">프렌카<em>필수</em></span>
+          <label class="drop" id="dropCard" for="inCard">${ICON_UP}<strong>프렌카</strong>사진 선택</label>
           <input id="inCard" type="file" accept="image/*" hidden></div>
-        <div><span class="lb">QR 코드 이미지<em>필수</em></span>
-          <label class="drop qr" id="dropQr" for="inQr">${ICON_UP}<strong>이미지 선택</strong>QR이 또렷한 사진</label>
+        <div><span class="lb">QR 코드<em>필수</em></span>
+          <label class="drop qr" id="dropQr" for="inQr">${ICON_UP}<strong>QR 코드</strong>사진 선택</label>
           <input id="inQr" type="file" accept="image/*" hidden></div>
       </div>
       <div><label for="fChar">캐릭터 이름<small>선택</small></label><input id="fChar" type="text" list="charList" value="${esc(r?.char)}" placeholder="예: 사쿠라 미쿠"><datalist id="charList">${[...new Set(S.rows.map(x=>x.char).filter(Boolean))].map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>

@@ -1,5 +1,5 @@
 // 앱 화면을 기기에 저장해 두고, 새 버전이 있으면 받아 오는 서비스 워커
-const CACHE = 'frenka-v1';
+const CACHE = 'frenka-v2';
 const SHELL = ['./', './index.html', './firebase-config.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
