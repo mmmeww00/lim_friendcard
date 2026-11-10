@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null && request.auth.token.email != null; }
+    // 번호 로그인 계정의 이메일 앞부분 = 번호 해시 = 프렌카의 owner 값
+    function me() { return request.auth.token.email.split('@')[0]; }
+    function isAdmin() { return signedIn() && request.auth.token.email == 'admin@ifri-frenka.app'; }
+    function owns(h) { return signedIn() && me() == h; }
+
+    function fields() {
+      return ['char', 'coordKo', 'coordJa', 'irochi', 'memo', 'thumb', 'owner', 'nick', 'createdAt', 'updatedAt'];
+    }
+    function validCard(d) {
+      return d.keys().hasOnly(fields())
+        && d.owner is string
+        && d.get('char', '').size() <= 300
+        && d.get('coordKo', '').size() <= 300
+        && d.get('coordJa', '').size() <= 300
+        && d.get('irochi', '').size() <= 300
+        && d.get('memo', '').size() <= 1000;
+    }
+
+    // 프렌카 목록: 누구나 보기, 등록은 로그인한 사람, 수정·삭제는 등록한 본인과 관리자
+    match /frenka/{id} {
+      allow read: if true;
+      allow create: if (owns(request.resource.data.owner) || isAdmin()) && validCard(request.resource.data);
+      allow update: if validCard(request.resource.data) && (isAdmin()
+        || (owns(resource.data.owner) && request.resource.data.owner == resource.data.owner));
+      allow delete: if isAdmin() || owns(resource.data.owner);
+    }
+
+    // 프렌카 원본 이미지와 QR
+    match /frenkaImg/{id} {
+      allow read: if true;
+      allow create: if owns(request.resource.data.owner) || isAdmin();
+      allow update: if isAdmin()
+        || (owns(resource.data.owner) && request.resource.data.owner == resource.data.owner);
+      allow delete: if isAdmin() || owns(resource.data.owner);
+    }
+
+    // 번호별 닉네임
+    match /members/{h} {
+      allow read: if true;
+      allow write: if owns(h) || isAdmin();
+    }
+  }
+}

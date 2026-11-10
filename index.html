@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="아이프리버스 프렌드 카드(프렌카)를 등록하고 검색해서 QR을 바로 띄워 쓰는 보관함">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="프렌카">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>아이프리 프렌카</title>
+<meta name="theme-color" content="#F5A7C0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+/* 레이아웃: 바인더 포켓처럼 카드가 줄지어 꽂힌 그리드 + 아래 시트(상세·등록·로그인) */
+:root{
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --accent:#F5A7C0;            /* 사쿠라미쿠 헤어 (기본) */
+  --on-accent:#4A2634;
+  --paper:#FFFFFF; --ink:#40222E; --ink-soft:#8E6273;
+  --danger:#C7354F; --gold:#F2B33D;
+  --soft:color-mix(in srgb,var(--accent) 22%,#fff);
+  --bg:color-mix(in srgb,var(--accent) 9%,#fff);
+  --line:color-mix(in srgb,var(--accent) 30%,#EDE3E7);
+  --deep:color-mix(in srgb,var(--accent) 55%,#5A1E36);
+  --shade:color-mix(in srgb,var(--accent) 70%,#6B2A44);
+  --display:"Jua","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --body:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+  --jp:"Hiragino Sans","Noto Sans JP","Yu Gothic","Meiryo",var(--body);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#2A1C23; --ink:#FBEAF1; --ink-soft:#CBA2B3; --danger:#FF7A90;
+  --soft:color-mix(in srgb,var(--accent) 26%,#2A1C23);
+  --bg:#1D1318; --line:#45303B;
+  --deep:color-mix(in srgb,var(--accent) 80%,#fff);
+  --shade:#120A0E; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#2A1C23; --ink:#FBEAF1; --ink-soft:#CBA2B3; --danger:#FF7A90;
+  --soft:color-mix(in srgb,var(--accent) 26%,#2A1C23);
+  --bg:#1D1318; --line:#45303B;
+  --deep:color-mix(in srgb,var(--accent) 80%,#fff);
+  --shade:#120A0E; color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--deep);outline-offset:2px}
+.wrap{max-width:960px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 120px}
+
+/* 헤더 */
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:22px 12px}
+.brand small{display:block;font-size:13px;color:var(--deep);margin-bottom:4px;letter-spacing:.04em}
+.brand h1{font-family:var(--display);font-weight:400;font-size:clamp(30px,7vw,40px);line-height:1;margin:0;text-wrap:balance}
+.brand h1 i{font-style:normal;color:var(--deep)}
+.brand p{margin:6px 0 0;color:var(--ink-soft);font-size:14px}
+.acts{display:flex;gap:8px;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--line);background:var(--paper);border-radius:99px;padding:6px 12px;font-size:14px;white-space:nowrap}
+.pill svg{width:17px;height:17px;flex:none}
+.pill.on{border-color:var(--accent);background:var(--soft);color:var(--deep)}
+.pill.icon{padding:6px 9px}
+.admin{font-family:var(--display);font-size:11px;background:var(--gold);color:#3A2600;border-radius:6px;padding:1px 6px}
+
+/* 탭 · 검색 */
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;gap:4px;padding-block:10px;border-bottom:2px dashed var(--line)}
+nav.tabs button{border:0;background:transparent;border-radius:99px;padding:7px 14px;font-family:var(--display);font-size:17px;color:var(--ink-soft)}
+nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+nav.tabs .cnt{font-family:var(--body);font-size:12px;margin-left:4px;opacity:.75}
+.tools{display:flex;flex-direction:column;gap:10px;margin-block:14px}
+.search{position:relative}
+.search svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:18px;height:18px;stroke:var(--deep);fill:none;stroke-width:2.2;stroke-linecap:round;pointer-events:none}
+.search input{width:100%;padding:11px 14px 11px 40px;border-radius:14px;border:2px solid var(--line);background:var(--paper);font-size:16px}
+.search input:focus{border-color:var(--accent);outline:0}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:2px solid var(--line);background:var(--paper);border-radius:99px;padding:5px 12px;font-size:14px;white-space:nowrap}
+.chip b{font-weight:400;color:var(--ink-soft);margin-left:4px;font-size:12px}
+.chip[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.chip[aria-pressed="true"] b{color:var(--bg);opacity:.75}
+.chip.iro[aria-pressed="true"]{border-color:var(--deep);background:var(--deep);color:var(--paper)}
+.sum{font-size:13px;color:var(--ink-soft);margin:0 0 8px}
+
+/* 그리드 */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+@media (max-width:420px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}
+.fk{position:relative;background:var(--paper);border:2px solid var(--line);border-radius:16px;padding:6px 6px 10px;display:flex;flex-direction:column;gap:6px;box-shadow:0 3px 0 var(--line);text-align:left;min-width:0}
+.fk:hover{border-color:var(--accent)}
+.fk .open{position:absolute;inset:0;border:0;background:transparent;border-radius:16px;z-index:1}
+.fk .pic{aspect-ratio:3/4;border-radius:11px;background:var(--soft);overflow:hidden;display:grid;place-items:center;max-width:100%}
+.fk .pic img{width:100%;height:100%;object-fit:cover;display:block}
+.fk .txt{padding:0 4px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.fk .ch{font-family:var(--display);font-size:13px;color:var(--deep)}
+.fk .ko{font-size:14px;line-height:1.35;word-break:keep-all;overflow-wrap:anywhere}
+.fk .ja{font-family:var(--jp);font-size:11.5px;color:var(--ink-soft);line-height:1.35;overflow-wrap:anywhere}
+.fk .tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.tag{font-family:var(--display);font-size:11px;border-radius:7px;padding:1px 7px;background:var(--soft);color:var(--deep)}
+.tag.mine{background:var(--gold);color:#3A2600}
+.tag.warn{background:color-mix(in srgb,var(--danger) 16%,var(--paper));color:var(--danger)}
+.qrmark{position:absolute;top:11px;right:11px;width:28px;height:28px;border-radius:8px;background:var(--paper);display:grid;place-items:center;box-shadow:0 1px 4px rgba(60,20,40,.22)}
+.qrmark svg{width:18px;height:18px;fill:var(--ink)}
+
+.empty{border:2px dashed var(--line);border-radius:18px;padding:34px 18px;text-align:center;color:var(--ink-soft);background:var(--paper)}
+.empty strong{display:block;font-family:var(--display);font-weight:400;font-size:20px;color:var(--ink);margin-bottom:6px}
+.empty .btn{margin-top:14px}
+.note{margin:12px 0 0;padding:10px 14px;border-radius:12px;background:var(--paper);border:2px solid var(--line);font-size:13.5px;color:var(--ink-soft)}
+.note.bad{border-color:var(--danger);color:var(--danger)}
+
+/* 버튼 */
+.btn{border:0;border-radius:14px;padding:12px 18px;font-family:var(--display);font-size:17px;background:var(--accent);color:var(--on-accent);box-shadow:0 3px 0 var(--shade)}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--shade)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.ghost{background:var(--paper);color:var(--ink);border:2px solid var(--line);box-shadow:none}
+.btn.danger{background:var(--danger);color:#fff;box-shadow:none}
+.btn.sm{padding:8px 12px;font-size:15px;border-radius:11px}
+.fab{position:fixed;z-index:6;right:max(16px,calc(env(safe-area-inset-right,0px) + 16px),calc(50% - 464px));bottom:calc(18px + env(safe-area-inset-bottom,0px));padding:14px 22px;border-radius:99px;font-size:18px;display:flex;gap:6px;align-items:center}
+.fab svg{width:20px;height:20px;stroke:currentColor;stroke-width:2.6;fill:none;stroke-linecap:round}
+
+/* 시트 */
+.scrim{position:fixed;inset:0;z-index:20;background:rgba(40,14,26,.42)}
+.sheet{position:fixed;z-index:21;left:50%;bottom:0;transform:translateX(-50%);width:min(560px,100%);max-height:92%;overflow:auto;background:var(--paper);border-radius:24px 24px 0 0;padding:18px max(18px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));box-shadow:0 -6px 30px rgba(40,14,26,.25)}
+.sheet.center{top:50%;bottom:auto;transform:translate(-50%,-50%);border-radius:22px;width:min(420px,calc(100% - 32px));padding-bottom:20px}
+.sh{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.sh h2{margin:0;font-family:var(--display);font-weight:400;font-size:22px;line-height:1.25;min-width:0;overflow-wrap:anywhere}
+.x{flex:none;width:36px;height:36px;border-radius:50%;border:2px solid var(--line);background:var(--paper);display:grid;place-items:center;padding:0}
+.x svg{width:16px;height:16px;stroke:var(--ink-soft);stroke-width:2.6;stroke-linecap:round}
+
+/* 상세 */
+.dv{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dv figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+.dv figcaption{font-size:12.5px;color:var(--ink-soft);display:flex;justify-content:space-between;align-items:center}
+.dv .im{border-radius:14px;border:2px solid var(--line);background:var(--bg);overflow:hidden;display:grid;place-items:center;aspect-ratio:3/4;max-width:100%}
+.dv .im img{width:100%;height:100%;object-fit:contain}
+.dv .im.qr{background:#fff;padding:8px}
+.dv .im button{border:0;padding:0;background:transparent;width:100%;height:100%}
+.load{color:var(--ink-soft);font-size:13px}
+dl.info{margin:14px 0 0;background:var(--bg);border-radius:14px;padding:2px 14px}
+dl.info>div{display:grid;grid-template-columns:84px 1fr;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line);align-items:baseline}
+dl.info>div:last-child{border-bottom:0}
+dl.info dt{font-size:13px;color:var(--ink-soft)}
+dl.info dd{margin:0;overflow-wrap:anywhere;white-space:pre-wrap}
+dl.info dd.jp{font-family:var(--jp)}
+.drow{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.drow .btn{flex:1 1 120px}
+.meta{font-size:12px;color:var(--ink-soft);margin-top:10px}
+
+/* 추천 */
+.rec{margin-top:18px;padding-top:14px;border-top:2px dashed var(--line)}
+.rec h3{font-family:var(--display);font-weight:400;font-size:17px;margin:0 0 10px;display:flex;align-items:baseline;gap:6px}
+.rec h3 span{font-family:var(--body);font-size:12px;color:var(--ink-soft)}
+.rec-row{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin}
+.rc{flex:0 0 108px;border:2px solid var(--line);background:var(--paper);border-radius:13px;padding:5px 5px 8px;display:flex;flex-direction:column;gap:5px;text-align:left;position:relative}
+.rc:hover{border-color:var(--accent)}
+.rp{aspect-ratio:3/4;border-radius:9px;background:var(--soft);overflow:hidden;display:block}
+.rp img{width:100%;height:100%;object-fit:cover;display:block}
+.rt{position:absolute;top:9px;left:9px;font-family:var(--display);font-size:11px;border-radius:7px;padding:1px 6px;background:var(--paper);color:var(--deep);box-shadow:0 1px 3px rgba(40,14,26,.2)}
+.rt.same{background:var(--accent);color:var(--on-accent)}
+.rn{font-size:12px;line-height:1.3;padding:0 2px;word-break:keep-all;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* QR 크게 보기 */
+.qrfull{position:fixed;inset:0;z-index:30;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(20px + env(safe-area-inset-top,0px)) 20px calc(20px + env(safe-area-inset-bottom,0px))}
+.qrfull img{max-width:min(92vw,560px);max-height:78vh;object-fit:contain;image-rendering:pixelated}
+.qrfull button{border:2px solid #E5D3DA;background:#fff;color:#40222E;border-radius:99px;padding:10px 22px;font-family:var(--display);font-size:17px}
+
+/* 폼 */
+form{display:flex;flex-direction:column;gap:14px}
+.f label,.f .lb{display:block;font-size:13.5px;margin-bottom:6px;color:var(--ink)}
+.f label em,.f .lb em{font-style:normal;color:var(--danger);margin-left:3px}
+.f label small,.f .lb small{color:var(--ink-soft);margin-left:4px}
+.f input[type=text],.f input[type=password],.f textarea{width:100%;padding:11px 12px;border-radius:12px;border:2px solid var(--line);background:var(--bg);font-size:16px}
+.f input.jp{font-family:var(--jp)}
+.f textarea{min-height:76px;resize:vertical}
+.f input:focus,.f textarea:focus{border-color:var(--accent);outline:0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:420px){.two{grid-template-columns:1fr}}
+.drop{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;aspect-ratio:3/4;max-width:100%;border:2px dashed var(--line);border-radius:14px;background:var(--bg);color:var(--ink-soft);font-size:13px;text-align:center;overflow:hidden;cursor:pointer}
+.drop.qr{aspect-ratio:3/4}
+.drop svg{width:28px;height:28px;stroke:var(--deep);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.drop strong{font-family:var(--display);font-weight:400;font-size:16px;color:var(--deep)}
+.drop img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--bg)}
+.drop.has{border-style:solid;border-color:var(--accent)}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.drop .chg{position:absolute;right:6px;bottom:6px;z-index:2;font-family:var(--display);font-size:12px;background:var(--paper);color:var(--deep);border-radius:8px;padding:2px 8px;box-shadow:0 1px 3px rgba(40,14,26,.2);pointer-events:none}
+.ferr{color:var(--danger);font-size:13px;min-height:1.2em;margin:0}
+.fbar{display:flex;gap:8px}
+.fbar .btn{flex:1}
+
+/* 로그인 */
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--soft);border-radius:14px;padding:4px;gap:2px;margin-bottom:14px}
+.seg button{border:0;background:transparent;border-radius:10px;padding:8px;font-family:var(--display);font-size:16px;color:var(--ink-soft)}
+.seg button[aria-pressed="true"]{background:var(--paper);color:var(--deep);box-shadow:0 1px 3px rgba(150,60,90,.18)}
+.code{letter-spacing:6px;text-align:center;font-family:var(--display)!important;font-size:24px!important}
+.hint{font-size:13px;color:var(--ink-soft);margin:0}
+.admlink{display:block;margin:12px auto 0;border:0;background:transparent;padding:4px 10px;font-size:12px;color:var(--ink-soft);text-decoration:underline;text-underline-offset:3px}
+
+/* 설정 */
+.swatches{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.sw{display:flex;flex-direction:column;align-items:center;gap:4px;border:0;background:transparent;padding:0;font-size:11.5px;color:var(--ink-soft);width:58px}
+.sw i{width:42px;height:42px;border-radius:50%;border:3px solid var(--paper);box-shadow:0 0 0 2px var(--line)}
+.sw[aria-pressed="true"] i{box-shadow:0 0 0 3px var(--ink)}
+.sw[aria-pressed="true"]{color:var(--ink)}
+.custom{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-soft);margin-top:12px}
+.custom input{width:46px;height:40px;padding:2px;border-radius:12px;border:2px solid var(--line);background:var(--paper)}
+.sec{margin-top:18px}
+.sec h3{font-family:var(--display);font-weight:400;font-size:17px;margin:0 0 8px}
+.seg3{display:grid;grid-template-columns:repeat(3,1fr);background:var(--soft);border-radius:14px;padding:4px;gap:2px}
+.seg3 button{border:0;background:transparent;border-radius:10px;padding:7px;font-size:14px;color:var(--ink-soft)}
+.seg3 button[aria-pressed="true"]{background:var(--paper);color:var(--deep);font-weight:700}
+
+.toast{position:fixed;z-index:40;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:99px;font-size:14px;max-width:calc(100% - 32px);text-align:center}
+@media (prefers-reduced-motion:no-preference){
+  .sheet{animation:up .22s cubic-bezier(.2,.9,.3,1.1)}
+  .sheet.center{animation:pop .18s ease-out}
+  @keyframes up{from{transform:translate(-50%,40px);opacity:.4}to{transform:translateX(-50%);opacity:1}}
+  @keyframes pop{from{transform:translate(-50%,-46%);opacity:.4}to{transform:translate(-50%,-50%);opacity:1}}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <small>아이프리버스 프렌드 카드</small>
+      <h1>프렌카 <i>보관함</i></h1>
+      <p>등록된 프렌카를 찾아보고, QR을 바로 띄워 쓰세요.</p>
+    </div>
+    <div class="acts">
+      <button class="pill" id="loginBtn" type="button"></button>
+      <button class="pill" id="setBtn" type="button">색상</button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" role="tab" id="tabAll" aria-selected="true">전체<span class="cnt" id="cntAll"></span></button>
+    <button type="button" role="tab" id="tabMine" aria-selected="false">내 프렌카<span class="cnt" id="cntMine"></span></button>
+  </nav>
+
+  <div class="tools">
+    <label class="search" for="q">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      <input id="q" type="search" placeholder="캐릭터, 코디 이름(한/일), 기타사항으로 검색" autocomplete="off">
+    </label>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <p class="sum" id="sum"></p>
+  <div id="list"></div>
+  <p class="note" id="status" hidden></p>
+</div>
+
+<button class="btn fab" id="addBtn" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>프렌카 등록하기</button>
+
+<div id="layer"></div>
+
+<script type="module">
+import { firebaseConfig, ADMIN_EMAIL, USER_DOMAIN } from './firebase-config.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ICON_X='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+const ICON_QR='<svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zM5 5v4h4V5zM13 3h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zM13 13h3v3h-3zM18 13h3v3h-3zM13 18h3v3h-3zM18 18h3v3h-3zM16 16h2v2h-2z"/></svg>';
+const ICON_UP='<svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>';
+const ICON_USER='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>';
+
+/* ---------- 개인 설정 (이 브라우저에만 저장) ---------- */
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const ACCENTS=[['사쿠라미쿠','#F5A7C0'],['스위트 핑크','#FF6FA8'],['체리','#D6246E'],['피치','#FFB38A'],['선샤인','#F5C542'],['민트','#4CCBA8'],['스카이','#6BB8F0'],['라벤더','#A88BEB']];
+const pref={accent:LS.get('fk.accent','#F5A7C0'),theme:LS.get('fk.theme','auto')};
+function applyTheme(){
+  const r=document.documentElement,c=/^#[0-9a-f]{6}$/i.test(pref.accent)?pref.accent:'#F5A7C0';
+  r.style.setProperty('--accent',c);
+  const [R,G,B]=[1,3,5].map(i=>parseInt(c.slice(i,i+2),16)/255).map(v=>v<=.03928?v/12.92:((v+.055)/1.055)**2.4);
+  r.style.setProperty('--on-accent',(.2126*R+.7152*G+.0722*B)>.4?'#4A2634':'#FFFFFF');
+  const m=document.querySelector('meta[name=theme-color]');if(m)m.content=c;
+  if(pref.theme==='auto')r.removeAttribute('data-theme');else r.setAttribute('data-theme',pref.theme);
+}
+applyTheme();
+
+/* ---------- 상태 ---------- */
+const S={rows:[],loaded:false,tab:'all',q:'',char:'',me:null,admin:false,db:null,fs:null,auth:null};
+// me = {h: 번호 해시, nick}
+let toastT;function toast(t){clearTimeout(toastT);let el=$('.toast');if(!el){el=document.createElement('div');el.className='toast';el.setAttribute('role','status');document.body.appendChild(el)}el.textContent=t;toastT=setTimeout(()=>el.remove(),2400)}
+
+const emailOf=h=>h+'@'+USER_DOMAIN;
+async function hash(code){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('ifri-frenka:'+code));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+const canManage=r=>!!r&&(S.admin||(S.me&&r.owner===S.me.h));
+
+/* ---------- 이미지 줄이기 ---------- */
+function loadImg(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),i=new Image();i.onload=()=>{ok(i)};i.onerror=()=>{URL.revokeObjectURL(u);no(new Error('img'))};i.src=u})}
+function draw(img,max){const s=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));const c=document.createElement('canvas');c.width=Math.round(img.naturalWidth*s);c.height=Math.round(img.naturalHeight*s);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.imageSmoothingQuality='high';x.drawImage(img,0,0,c.width,c.height);return c}
+function fitJpeg(img,max,budget){let m=max,q=.86,d='';for(let k=0;k<12;k++){d=draw(img,m).toDataURL('image/jpeg',q);if(d.length<=budget)return d;if(q>.62)q-=.08;else m=Math.round(m*.85)}return d}
+function fitQr(img){for(const m of [720,600,480]){const d=draw(img,m).toDataURL('image/png');if(d.length<=90000)return d}return fitJpeg(img,600,90000)}
+
+/* ---------- 데이터 ---------- */
+function setStatus(t,bad){const el=$('#status');el.hidden=!t;el.textContent=t||'';el.classList.toggle('bad',!!bad)}
+let loadTimer;
+/* Firestore를 단순한 doc/collection 형태로 감싸기 */
+function wrapSnap(x){return {id:x.id,exists:x.exists(),data:()=>x.data(),metadata:x.metadata}}
+function dref(path){const r=doc(S.fs,path);return {id:r.id,get:async()=>wrapSnap(await getDoc(r)),set:d=>setDoc(r,d),update:d=>updateDoc(r,d),delete:()=>deleteDoc(r)}}
+async function start(){
+  render();
+  if(!firebaseConfig||!firebaseConfig.apiKey||/^YOUR/.test(firebaseConfig.apiKey)){S.loaded=true;setStatus('firebase-config.js에 Firebase 설정값을 넣어 주세요.',true);render();return}
+  loadTimer=setTimeout(()=>{if(!S.loaded)setStatus('프렌카 목록을 아직 불러오지 못했어요. 인터넷 연결을 확인해 주세요.')},10000);
+  const app=initializeApp(firebaseConfig);
+  try{S.fs=initializeFirestore(app,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})})}catch(e){S.fs=getFirestore(app)}
+  S.auth=getAuth(app);
+  S.db={doc:dref,collection:p=>({doc:()=>{const r=doc(collection(S.fs,p));return dref(p+'/'+r.id)}})};
+  onAuthStateChanged(S.auth,async u=>{
+    const mail=(u&&u.email)||'';
+    if(!u){S.me=null;S.admin=false}
+    else if(mail===ADMIN_EMAIL){S.admin=true;S.me={h:'admin',nick:'관리자'}}
+    else{S.admin=false;const h=mail.split('@')[0];S.me={h,nick:LS.get('fk.nick.'+h,'')};
+      try{const m=await S.db.doc('members/'+h).get();if(m.exists){S.me.nick=m.data().nick||'';LS.set('fk.nick.'+h,S.me.nick)}}catch(e){}}
+    if(!S.me&&S.tab==='mine')S.tab='all';
+    render();
+  });
+  onSnapshot(query(collection(S.fs,'frenka'),orderBy('createdAt','desc')),{includeMetadataChanges:true},snap=>{
+    S.rows=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!snap.metadata.fromCache){S.loaded=true;clearTimeout(loadTimer);setStatus('')}
+    else if(!S.loaded&&S.rows.length)S.loaded=true;
+    render();
+  },e=>{S.loaded=true;clearTimeout(loadTimer);setStatus('목록을 불러오지 못했어요 ('+e.code+'). 앱을 다시 열어 주세요.',true);render()});
+}
+
+/* ---------- 렌더 ---------- */
+function norm(s){return String(s||'').toLowerCase().replace(/\s+/g,'')}
+function filtered(){
+  const q=norm(S.q);
+  return S.rows.filter(r=>{
+    if(S.tab==='mine'&&!(S.me&&r.owner===S.me.h))return false;
+    if(S.char&&(r.char||'')!==S.char)return false;
+    if(q&&!norm([r.char,r.coordKo,r.coordJa,r.irochi,r.memo,r.nick].join('|')).includes(q))return false;
+    return true;
+  });
+}
+function render(){
+  // 헤더
+  const lb=$('#loginBtn');
+  lb.innerHTML=ICON_USER+(S.me?`<span>${esc(S.me.nick||'내 번호')}</span>`:'<span>로그인</span>')+(S.admin?'<span class="admin">관리자</span>':'');
+  lb.classList.toggle('on',!!S.me);
+  $('#tabAll').setAttribute('aria-selected',S.tab==='all');$('#tabMine').setAttribute('aria-selected',S.tab==='mine');
+  const mine=S.me?S.rows.filter(r=>r.owner===S.me.h).length:0;
+  $('#cntAll').textContent=S.rows.length?S.rows.length:'';$('#cntMine').textContent=S.me?mine:'';
+  // 칩
+  const pool=S.tab==='mine'&&S.me?S.rows.filter(r=>r.owner===S.me.h):S.rows;
+  const chars={};pool.forEach(r=>{if(r.char)chars[r.char]=(chars[r.char]||0)+1});
+  $('#chips').innerHTML=`<button type="button" class="chip" data-char="" aria-pressed="${!S.char}">모든 캐릭터</button>`+
+    Object.entries(chars).sort((a,b)=>b[1]-a[1]).map(([c,n])=>`<button type="button" class="chip" data-char="${esc(c)}" aria-pressed="${S.char===c}">${esc(c)}<b>${n}</b></button>`).join('');
+  // 목록
+  const L=$('#list'),rows=filtered();
+  if(!S.loaded&&!S.rows.length){L.innerHTML='<div class="empty"><strong>프렌카를 불러오는 중</strong>잠시만 기다려 주세요.</div>';$('#sum').textContent='';return}
+  if(S.tab==='mine'&&!S.me){L.innerHTML='<div class="empty"><strong>로그인하면 내 프렌카만 모아 볼 수 있어요</strong>등록할 때 쓴 번호로 로그인해 주세요.<br><button type="button" class="btn" data-act="login">로그인</button></div>';$('#sum').textContent='';return}
+  if(!S.rows.length||(S.tab==='mine'&&!mine)){L.innerHTML='<div class="empty"><strong>'+(S.tab==='mine'?'아직 등록한 프렌카가 없어요':'아직 등록된 프렌카가 없어요')+'</strong>프렌카 이미지와 QR 코드 이미지만 있으면 바로 등록할 수 있어요.<br><button type="button" class="btn" data-act="add">첫 프렌카 등록하기</button></div>';$('#sum').textContent='';return}
+  $('#sum').textContent=(S.q||S.char)?`${rows.length}장 찾았어요`:`${rows.length}장`;
+  if(!rows.length){L.innerHTML='<div class="empty"><strong>조건에 맞는 프렌카가 없어요</strong>검색어를 줄이거나 캐릭터 필터를 풀어 보세요.</div>';return}
+  L.innerHTML='<div class="grid">'+rows.map(r=>{
+    const own=S.me&&r.owner===S.me.h;
+    return `<article class="fk">
+      <div class="pic">${r.thumb?`<img src="${esc(r.thumb)}" alt="" loading="lazy">`:''}</div>
+      <span class="qrmark" aria-hidden="true">${ICON_QR}</span>
+      <div class="txt">
+        ${r.char?`<span class="ch">${esc(r.char)}</span>`:''}
+        <span class="ko">${esc(r.coordKo||r.coordJa||'이름 없는 코디')}</span>
+        ${r.coordJa&&r.coordKo?`<span class="ja" lang="ja">${esc(r.coordJa)}</span>`:''}
+        <span class="tags">${own?'<span class="tag mine">내 프렌카</span>':''}${r.irochi?'<span class="tag">이로치</span>':''}${r.memo?'<span class="tag warn">참고사항</span>':''}</span>
+      </div>
+      <button type="button" class="open" data-open="${esc(r.id)}" aria-label="${esc((r.char?r.char+' ':'')+(r.coordKo||r.coordJa||'프렌카'))} 보기"></button>
+    </article>`}).join('')+'</div>';
+}
+
+/* ---------- 같은 코디 · 이로치 추천 ---------- */
+const nk=s=>norm(s).replace(/[・·\-_~()（）\[\]「」]/g,'').replace(/(코디|コーデ)$/,'');
+function names(r){return [nk(r.coordKo),nk(r.coordJa)].filter(x=>x.length>=2)}
+function base(r){const b=nk(r.irochi);return b.length>=2?b:''}
+function related(a,b){
+  const na=names(a),nb=names(b);
+  if(na.some(x=>nb.includes(x)))return 'same';
+  const ba=base(a),bb=base(b);
+  if(ba&&bb&&ba===bb)return 'iro';
+  if(ba&&(nb.some(x=>x.startsWith(ba))))return 'iro';
+  if(bb&&(na.some(x=>x.startsWith(bb))))return 'iro';
+  if(na.some(x=>x.length>=4&&nb.some(y=>y!==x&&(y.startsWith(x)||x.startsWith(y)))))return 'iro';
+  return '';
+}
+function recs(r){
+  const out=[];
+  for(const o of S.rows){if(o.id===r.id)continue;const k=related(r,o);if(k)out.push({o,k})}
+  out.sort((x,y)=>(x.k==='same'?0:1)-(y.k==='same'?0:1));
+  return out.slice(0,12);
+}
+function recHtml(r){
+  const list=recs(r);if(!list.length)return '';
+  return `<div class="rec"><h3>같은 코디 · 이로치 프렌카 <span>${list.length}장</span></h3><div class="rec-row">`+list.map(({o,k})=>`
+    <button type="button" class="rc" data-open="${esc(o.id)}">
+      <span class="rp">${o.thumb?`<img src="${esc(o.thumb)}" alt="" loading="lazy">`:''}</span>
+      <span class="rt ${k}">${k==='same'?'같은 코디':'이로치'}</span>
+      <span class="rn">${esc(o.char?o.char+' · ':'')}${esc(o.coordKo||o.coordJa||'이름 없는 코디')}</span>
+    </button>`).join('')+`</div></div>`;
+}
+
+/* ---------- 레이어 ---------- */
+function close(){$('#layer').innerHTML='';document.body.style.overflow=''}
+function open(html,center){$('#layer').innerHTML=`<div class="scrim" data-act="close"></div><div class="sheet${center?' center':''}" role="dialog" aria-modal="true">${html}</div>`;document.body.style.overflow='hidden';const f=$('#layer [autofocus]');if(f)f.focus()}
+const head=t=>`<div class="sh"><h2>${t}</h2><button type="button" class="x" data-act="close" aria-label="닫기">${ICON_X}</button></div>`;
+
+/* 상세 */
+const imgCache={};
+async function getImgs(id){if(imgCache[id])return imgCache[id];const s=await S.db.doc('frenkaImg/'+id).get();const d=s.exists?s.data():{};imgCache[id]=d;return d}
+async function showDetail(id){
+  const r=S.rows.find(x=>x.id===id);if(!r)return;
+  const ttl=esc(r.coordKo||r.coordJa||'프렌카');
+  open(head((r.char?esc(r.char)+' · ':'')+ttl)+`
+    <div class="dv">
+      <figure><figcaption>프렌카</figcaption><div class="im" id="dCard">${r.thumb?`<img src="${esc(r.thumb)}" alt="프렌카 이미지">`:'<span class="load">불러오는 중</span>'}</div></figure>
+      <figure><figcaption>QR 코드<span>눌러서 크게</span></figcaption><div class="im qr" id="dQr"><span class="load">불러오는 중</span></div></figure>
+    </div>
+    <dl class="info">
+      ${r.char?`<div><dt>캐릭터</dt><dd>${esc(r.char)}</dd></div>`:''}
+      ${r.coordKo?`<div><dt>코디 (한)</dt><dd>${esc(r.coordKo)}</dd></div>`:''}
+      ${r.coordJa?`<div><dt>코디 (일)</dt><dd class="jp" lang="ja">${esc(r.coordJa)}</dd></div>`:''}
+      ${r.irochi?`<div><dt>이로치 코디</dt><dd>${esc(r.irochi)}</dd></div>`:''}
+      ${r.memo?`<div><dt>기타사항</dt><dd>${esc(r.memo)}</dd></div>`:''}
+      ${!r.char&&!r.coordKo&&!r.coordJa&&!r.irochi&&!r.memo?'<div><dt>정보</dt><dd>추가 정보가 없어요</dd></div>':''}
+    </dl>
+    <div class="drow">
+      <button type="button" class="btn" id="qrBig" disabled>QR 크게 띄우기</button>
+      <button type="button" class="btn ghost" id="qrSave" disabled>QR 저장</button>
+    </div>
+    ${canManage(r)?`<div class="drow"><button type="button" class="btn ghost sm" data-edit="${esc(r.id)}">수정</button><button type="button" class="btn ghost sm" data-del="${esc(r.id)}" style="color:var(--danger)">삭제</button></div>`:''}
+    ${recHtml(r)}
+    <p class="meta">${r.nick?esc(r.nick)+' 님이 ':''}${fmt(r.createdAt)} 등록${r.updatedAt&&r.updatedAt!==r.createdAt?' · '+fmt(r.updatedAt)+' 수정':''}</p>`);
+  try{
+    const im=await getImgs(id);
+    if(!$('#dQr'))return;
+    if(im.card)$('#dCard').innerHTML=`<img src="${im.card}" alt="프렌카 이미지">`;
+    if(im.qr){$('#dQr').innerHTML=`<button type="button" data-act="qrbig" aria-label="QR 크게 띄우기"><img src="${im.qr}" alt="QR 코드"></button>`;$('#qrBig').disabled=false;const sv=$('#qrSave');if(sv)sv.disabled=false}
+    else $('#dQr').innerHTML='<span class="load">QR 이미지가 없어요</span>';
+    $('#qrBig').onclick=()=>qrFull(im.qr);
+    $('#dQr').onclick=e=>{if(e.target.closest('[data-act=qrbig]'))qrFull(im.qr)};
+    const sv=$('#qrSave');if(sv)sv.onclick=()=>saveQr(r,im.qr);
+  }catch(e){const q=$('#dQr');if(q)q.innerHTML='<span class="load">이미지를 불러오지 못했어요</span>'}
+}
+function fmt(t){if(!t)return'';const d=new Date(t);return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`}
+function qrFull(src){if(!src)return;const d=document.createElement('div');d.className='qrfull';d.innerHTML=`<img src="${src}" alt="QR 코드"><button type="button">닫기</button>`;d.onclick=()=>d.remove();document.body.appendChild(d);d.querySelector('button').focus()}
+async function saveQr(r,src){
+  try{const b=await (await fetch(src)).blob();const ext=b.type.includes('png')?'png':'jpg';
+    const name=('프렌카QR_'+(r.char||'')+'_'+(r.coordKo||r.coordJa||r.id)).replace(/[\\/:*?"<>|\s]+/g,'_').slice(0,80)+'.'+ext;
+    const f=new File([b],name,{type:b.type});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:name});return}catch(e){if(e&&e.name==='AbortError')return}}
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);toast('QR 이미지를 저장했어요');
+  }catch(e){toast('저장하지 못했어요');}
+}
+
+/* 등록·수정 */
+let draft=null;
+function showForm(id){
+  if(!S.me){showLogin('add');return}
+  const r=id?S.rows.find(x=>x.id===id):null;
+  if(r&&!canManage(r)){toast('등록한 본인과 관리자만 수정할 수 있어요');return}
+  draft={id:r?r.id:null,card:null,qr:null,thumb:null,oldCard:null,oldQr:null};
+  open(head(r?'프렌카 수정':'프렌카 등록')+`
+    <form id="fkForm" class="f" novalidate>
+      <div class="two">
+        <div><span class="lb">프렌카 이미지<em>필수</em></span>
+          <label class="drop" id="dropCard" for="inCard">${ICON_UP}<strong>이미지 선택</strong>카드 앞면 사진</label>
+          <input id="inCard" type="file" accept="image/*" hidden></div>
+        <div><span class="lb">QR 코드 이미지<em>필수</em></span>
+          <label class="drop qr" id="dropQr" for="inQr">${ICON_UP}<strong>이미지 선택</strong>QR이 또렷한 사진</label>
+          <input id="inQr" type="file" accept="image/*" hidden></div>
+      </div>
+      <div><label for="fChar">캐릭터 이름<small>선택</small></label><input id="fChar" type="text" list="charList" value="${esc(r?.char)}" placeholder="예: 사쿠라 미쿠"><datalist id="charList">${[...new Set(S.rows.map(x=>x.char).filter(Boolean))].map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
+      <div class="two">
+        <div><label for="fKo">코디 이름 (한국어)<small>선택</small></label><input id="fKo" type="text" value="${esc(r?.coordKo)}"></div>
+        <div><label for="fJa">코디 이름 (일본어)<small>선택</small></label><input id="fJa" class="jp" lang="ja" type="text" value="${esc(r?.coordJa)}"></div>
+      </div>
+      <div><label for="fIro">이로치 코디<small>선택 · 이로치라면 원래 코디 이름</small></label><input id="fIro" type="text" value="${esc(r?.irochi)}" placeholder="예: 플라워 바즈리움 코디"></div>
+      <div><label for="fMemo">기타사항<small>선택</small></label><textarea id="fMemo" placeholder="예: OO 대행주에게는 사용 불가">${esc(r?.memo)}</textarea></div>
+      <p class="ferr" id="fErr" role="alert"></p>
+      <div class="fbar"><button type="button" class="btn ghost" data-act="close">취소</button><button type="submit" class="btn" id="fSave">${r?'수정 저장':'등록하기'}</button></div>
+    </form>`);
+  if(r){
+    if(r.thumb)setDrop('dropCard',r.thumb);
+    getImgs(r.id).then(im=>{draft.oldCard=im.card||null;draft.oldQr=im.qr||null;if(im.card&&!draft.card)setDrop('dropCard',im.card);if(im.qr&&!draft.qr)setDrop('dropQr',im.qr)}).catch(()=>{});
+  }
+  $('#inCard').onchange=e=>pick(e.target.files[0],'card');
+  $('#inQr').onchange=e=>pick(e.target.files[0],'qr');
+  $('#fkForm').onsubmit=e=>{e.preventDefault();saveForm()};
+}
+function setDrop(id,src){const d=$('#'+id);if(!d)return;d.classList.add('has');d.innerHTML=`<img src="${src}" alt=""><span class="chg">바꾸기</span>`}
+async function pick(file,kind){
+  if(!file)return;$('#fErr').textContent='';
+  try{const img=await loadImg(file);
+    if(kind==='card'){draft.card=fitJpeg(img,1000,140000);draft.thumb=fitJpeg(img,360,24000);setDrop('dropCard',draft.card)}
+    else{draft.qr=fitQr(img);setDrop('dropQr',draft.qr)}
+    URL.revokeObjectURL(img.src);
+  }catch(e){$('#fErr').textContent='이미지를 읽지 못했어요. JPG나 PNG 파일로 다시 골라 주세요.'}
+}
+async function saveForm(){
+  const err=$('#fErr'),btn=$('#fSave');
+  const editing=!!draft.id,r=editing?S.rows.find(x=>x.id===draft.id):null;
+  if(!editing&&!draft.card){err.textContent='프렌카 이미지를 올려 주세요.';return}
+  if(!editing&&!draft.qr){err.textContent='QR 코드 이미지를 올려 주세요.';return}
+  if(editing&&(draft.card||draft.qr)&&!((draft.card||draft.oldCard)&&(draft.qr||draft.oldQr))){err.textContent='기존 이미지를 불러오는 중이에요. 잠시 후 다시 눌러 주세요.';return}
+  if(!S.db){err.textContent='저장소에 연결되어 있지 않아 저장할 수 없어요.';return}
+  const v=id=>$('#'+id).value.trim().slice(0,300);
+  const meta={char:v('fChar'),coordKo:v('fKo'),coordJa:v('fJa'),irochi:v('fIro'),memo:$('#fMemo').value.trim().slice(0,1000)};
+  btn.disabled=true;btn.textContent='저장하는 중';
+  try{
+    const now=new Date().toISOString();
+    if(editing){
+      if(draft.card||draft.qr){const body={card:draft.card||draft.oldCard,qr:draft.qr||draft.oldQr,owner:r.owner};await S.db.doc('frenkaImg/'+draft.id).set(body);imgCache[draft.id]=body}
+      const upd={...meta,updatedAt:now};if(draft.thumb)upd.thumb=draft.thumb;
+      await S.db.doc('frenka/'+draft.id).update(upd);
+      close();toast('수정했어요');
+    }else{
+      const ref=S.db.collection('frenka').doc();
+      await S.db.doc('frenkaImg/'+ref.id).set({card:draft.card,qr:draft.qr,owner:S.me.h});
+      imgCache[ref.id]={card:draft.card,qr:draft.qr};
+      await ref.set({...meta,thumb:draft.thumb,owner:S.me.h,nick:S.me.nick||'',createdAt:now,updatedAt:now});
+      close();toast('프렌카를 등록했어요');
+    }
+  }catch(e){
+    btn.disabled=false;btn.textContent=editing?'수정 저장':'등록하기';
+    err.textContent=e&&e.code==='permission-denied'?'저장할 권한이 없어요. 다시 로그인한 뒤 시도해 주세요.':e&&e.code==='resource-exhausted'?'오늘 사용할 수 있는 저장 용량을 다 썼어요. 관리자에게 알려 주세요.':'저장하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.';
+  }
+}
+function confirmDel(id){
+  const r=S.rows.find(x=>x.id===id);if(!canManage(r))return;
+  open(head('이 프렌카를 삭제할까요?')+`<p class="hint">${esc((r.char?r.char+' · ':'')+(r.coordKo||r.coordJa||'이름 없는 코디'))}<br>삭제하면 되돌릴 수 없어요.</p><div class="fbar" style="margin-top:16px"><button type="button" class="btn ghost" data-act="close">취소</button><button type="button" class="btn danger" id="delGo">삭제</button></div>`,true);
+  $('#delGo').onclick=async()=>{try{await S.db.doc('frenka/'+id).delete();await S.db.doc('frenkaImg/'+id).delete();close();toast('삭제했어요')}catch(e){toast('삭제하지 못했어요')}};
+}
+
+/* 로그인 */
+function showLogin(after,mode){
+  mode=mode||'in';
+  if(S.me&&!after){
+    open(head('내 번호')+`<p class="hint">${S.admin?'관리자로 로그인되어 있어요. 모든 프렌카를 수정·삭제할 수 있어요.':esc(S.me.nick||'닉네임 없음')+' 님으로 로그인되어 있어요.'}</p>
+      <div class="fbar" style="margin-top:16px"><button type="button" class="btn ghost" id="outBtn">로그아웃</button><button type="button" class="btn" data-act="mine">내 프렌카 보기</button></div>
+      ${S.admin?'<div class="sec"><h3>백업 가져오기</h3><p class="hint">아티팩트에서 내보낸 백업 파일(.json)의 프렌카를 이 앱으로 옮겨요. 같은 프렌카는 덮어써요.</p><button type="button" class="btn ghost sm" id="impBtn" style="margin-top:8px">백업 파일 고르기</button><input id="impFile" type="file" accept="application/json,.json" hidden><p class="hint" id="impMsg" style="margin-top:6px"></p></div>':'<button type="button" class="admlink" data-act="admin">관리자</button>'}`,true);
+    $('#outBtn').onclick=async()=>{await signOut(S.auth);close();toast('로그아웃했어요')};
+    const ib=$('#impBtn');if(ib)ib.onclick=()=>$('#impFile').click();const fi=$('#impFile');if(fi)fi.onchange=e=>importBackup(e.target.files[0]);return;
+  }
+  open(head(after==='add'?'등록하려면 번호로 로그인해 주세요':'번호 로그인')+`
+    <div class="seg"><button type="button" data-mode="in" aria-pressed="${mode==='in'}">로그인</button><button type="button" data-mode="new" aria-pressed="${mode==='new'}">새 번호 만들기</button></div>
+    <form id="lgForm" class="f" novalidate>
+      <div><label for="lgCode">번호 (숫자 6~8자리)</label><input id="lgCode" class="code" type="password" inputmode="numeric" autocomplete="off" maxlength="8" autofocus></div>
+      ${mode==='new'?`<div><label for="lgNick">닉네임<small>선택 · 프렌카에 등록자로 표시돼요</small></label><input id="lgNick" type="text" maxlength="20"></div>
+      <p class="hint">번호는 다른 곳에서 쓰지 않는 숫자로 정하고 꼭 기억해 두세요. 번호를 잊으면 내 프렌카를 수정할 수 없어요.</p>`:'<p class="hint">프렌카를 등록할 때 정한 번호를 입력하세요. 처음이면 새 번호를 만들어 주세요.</p>'}
+      <p class="ferr" id="lgErr" role="alert"></p>
+      <button type="submit" class="btn" id="lgGo">${mode==='new'?'번호 만들고 로그인':'로그인'}</button>
+    </form>
+    <button type="button" class="admlink" data-act="admin">관리자</button>`,true);
+  $('#layer .seg').onclick=e=>{const b=e.target.closest('[data-mode]');if(b)showLogin(after,b.dataset.mode)};
+  $('#lgCode').oninput=e=>{e.target.value=e.target.value.replace(/\D/g,'')};
+  $('#lgForm').onsubmit=async e=>{
+    e.preventDefault();const code=$('#lgCode').value,er=$('#lgErr'),go=$('#lgGo');
+    if(!/^\d{6,8}$/.test(code)){er.textContent='숫자 6~8자리로 입력해 주세요.';return}
+    if(!S.db){er.textContent='저장소에 연결되어 있지 않아요.';return}
+    go.disabled=true;
+    try{
+      const h=await hash(code),mail=emailOf(h);
+      if(mode==='new'){
+        try{await createUserWithEmailAndPassword(S.auth,mail,code)}
+        catch(x){if(x.code==='auth/email-already-in-use'){er.textContent='이미 쓰고 있는 번호예요. 다른 번호를 골라 주세요.';go.disabled=false;return}throw x}
+        const nick=($('#lgNick').value||'').trim().slice(0,20);
+        await S.db.doc('members/'+h).set({nick,createdAt:new Date().toISOString()});
+        LS.set('fk.nick.'+h,nick);if(S.me&&S.me.h===h){S.me.nick=nick;render()}
+      }else{
+        try{await signInWithEmailAndPassword(S.auth,mail,code)}
+        catch(x){
+          if(x.code!=='auth/invalid-credential'&&x.code!=='auth/user-not-found')throw x;
+          // 아티팩트에서 옮겨 온 번호면 처음 로그인할 때 계정을 만들어 줌
+          const m=await S.db.doc('members/'+h).get();
+          if(!m.exists){er.textContent='등록되지 않은 번호예요. 번호를 확인하거나 새 번호를 만들어 주세요.';go.disabled=false;return}
+          await createUserWithEmailAndPassword(S.auth,mail,code);
+        }
+      }
+      close();toast('로그인했어요');
+      if(after==='add')setTimeout(()=>showForm(),300);
+    }catch(x){go.disabled=false;er.textContent=x&&x.code==='auth/too-many-requests'?'시도가 너무 많아요. 잠시 후 다시 해 주세요.':x&&x.code==='auth/network-request-failed'?'인터넷 연결을 확인해 주세요.':'로그인하지 못했어요. 잠시 후 다시 시도해 주세요.'}
+  };
+}
+
+/* 관리자 로그인 */
+function showAdmin(){
+  open(head('관리자 로그인')+`
+    <form id="admForm" class="f" novalidate>
+      <div><label for="admPw">관리자 암호</label><input id="admPw" type="password" autocomplete="current-password" autofocus></div>
+      <p class="ferr" id="admErr" role="alert"></p>
+      <button type="submit" class="btn" id="admGo">관리자 로그인</button>
+    </form>`,true);
+  $('#admForm').onsubmit=async e=>{
+    e.preventDefault();const pw=$('#admPw').value,er=$('#admErr'),go=$('#admGo');
+    if(!pw){er.textContent='암호를 입력해 주세요.';return}
+    if(!S.auth){er.textContent='Firebase에 연결되어 있지 않아요.';return}
+    go.disabled=true;go.textContent='확인하는 중';er.textContent='';
+    try{await signInWithEmailAndPassword(S.auth,ADMIN_EMAIL,pw);close();toast('관리자로 로그인했어요')}
+    catch(x){go.disabled=false;go.textContent='관리자 로그인';er.textContent=x.code==='auth/too-many-requests'?'시도가 너무 많아요. 잠시 후 다시 해 주세요.':'암호가 맞지 않아요.';$('#admPw').select()}
+  };
+}
+
+/* 백업 가져오기 (관리자) */
+async function importBackup(file){
+  const msg=$('#impMsg');if(!file||!msg)return;
+  try{
+    const d=JSON.parse(await file.text());
+    const rows=Object.entries(d.frenka||{}),imgs=d.frenkaImg||{},mem=Object.entries(d.members||{});
+    if(!rows.length&&!mem.length){msg.textContent='가져올 프렌카가 없는 파일이에요.';return}
+    msg.textContent='옮기는 중';
+    const ops=[];
+    mem.forEach(([h,v])=>ops.push(['members/'+h,{nick:v.nick||'',createdAt:v.createdAt||new Date().toISOString()}]));
+    rows.forEach(([id,v])=>{const k=['char','coordKo','coordJa','irochi','memo','thumb','owner','nick','createdAt','updatedAt'];const o={};k.forEach(x=>{if(v[x]!=null)o[x]=v[x]});
+      if(imgs[id])ops.push(['frenkaImg/'+id,{card:imgs[id].card||'',qr:imgs[id].qr||'',owner:o.owner}]);
+      ops.push(['frenka/'+id,o])});
+    // 문서 크기가 커서 몇 개씩 나눠서 씀
+    for(let i=0;i<ops.length;i+=4){const b=writeBatch(S.fs);ops.slice(i,i+4).forEach(([p,v])=>b.set(doc(S.fs,p),v));await b.commit()}
+    msg.textContent=`프렌카 ${rows.length}장을 옮겼어요.`;
+  }catch(e){msg.textContent=e&&e.code==='permission-denied'?'관리자로 로그인해야 가져올 수 있어요.':'파일을 읽지 못했어요. 아티팩트에서 내보낸 백업 파일인지 확인해 주세요.'}
+}
+
+/* 테마 */
+function showSettings(){
+  const pre=ACCENTS.some(a=>a[1].toLowerCase()===pref.accent.toLowerCase());
+  open(head('색상')+`
+    <p class="hint">포인트 색을 고르면 버튼과 배경의 옅은 색이 함께 바뀌어요. 이 기기에만 저장돼요.</p>
+    <div class="sec"><div class="swatches" id="sws">${ACCENTS.map(([n,c])=>`<button type="button" class="sw" data-c="${c}" aria-pressed="${c.toLowerCase()===pref.accent.toLowerCase()}"><i style="background:${c}"></i>${n}</button>`).join('')}</div>
+      <label class="custom" for="swC"><input id="swC" type="color" value="${pref.accent}">${pre?'직접 고르기':'직접 고른 색'}</label></div>
+    <div class="sec"><h3>화면</h3><div class="seg3" id="thm">${[['auto','시스템'],['light','밝게'],['dark','어둡게']].map(([v,n])=>`<button type="button" data-v="${v}" aria-pressed="${pref.theme===v}">${n}</button>`).join('')}</div></div>`,true);
+  $('#sws').onclick=e=>{const b=e.target.closest('[data-c]');if(!b)return;pref.accent=b.dataset.c;LS.set('fk.accent',pref.accent);applyTheme();showSettings()};
+  $('#swC').oninput=e=>{document.documentElement.style.setProperty('--accent',e.target.value)};
+  $('#swC').onchange=e=>{pref.accent=e.target.value;LS.set('fk.accent',pref.accent);applyTheme();showSettings()};
+  $('#thm').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;pref.theme=b.dataset.v;LS.set('fk.theme',pref.theme);applyTheme();showSettings()};
+}
+
+/* ---------- 이벤트 ---------- */
+$('#q').oninput=e=>{S.q=e.target.value;render()};
+$('#tabAll').onclick=()=>{S.tab='all';S.char='';render()};
+$('#tabMine').onclick=()=>{if(!S.me){showLogin()}S.tab='mine';S.char='';render()};
+$('#chips').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.char=b.dataset.char;render()};
+$('#addBtn').onclick=()=>showForm();
+$('#loginBtn').onclick=()=>showLogin();
+$('#setBtn').onclick=showSettings;
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act],[data-open],[data-edit],[data-del]');if(!t)return;
+  if(t.dataset.open)return showDetail(t.dataset.open);
+  if(t.dataset.edit)return showForm(t.dataset.edit);
+  if(t.dataset.del)return confirmDel(t.dataset.del);
+  const a=t.dataset.act;
+  if(a==='close')close();else if(a==='add')showForm();else if(a==='login')showLogin();else if(a==='admin')showAdmin();else if(a==='mine'){close();S.tab='mine';render()}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const f=$('.qrfull');if(f)f.remove();else close()}});
+
+start();
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+
+</body>
+</html>
