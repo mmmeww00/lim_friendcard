@@ -1,5 +1,5 @@
 // 앱 화면을 기기에 저장해 두고, 새 버전이 있으면 받아 오는 서비스 워커
-const CACHE = 'frenka-v2';
+const CACHE = 'frenka-v5';
 const SHELL = ['./', './index.html', './firebase-config.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
@@ -22,7 +22,8 @@ self.addEventListener('fetch', e => {
 
   // 같은 사이트 파일: 네트워크 먼저, 안 되면 저장본
   if (url.origin === location.origin) {
-    e.respondWith(fetch(req).then(res => {
+    // 브라우저에 남은 예전 파일을 쓰지 않도록 항상 서버에 새 버전이 있는지 확인
+    e.respondWith(fetch(new Request(req.url, { cache: 'no-cache', credentials: 'same-origin' })).then(res => {
       const copy = res.clone();
       caches.open(CACHE).then(c => c.put(req, copy));
       return res;

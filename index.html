@@ -106,6 +106,22 @@ nav.tabs .cnt{font-family:var(--body);font-size:12px;margin-left:4px;opacity:.75
 .qrmark{position:absolute;top:11px;right:11px;width:28px;height:28px;border-radius:8px;background:var(--paper);display:grid;place-items:center;box-shadow:0 1px 4px rgba(60,20,40,.22)}
 .qrmark svg{width:18px;height:18px;fill:var(--ink)}
 
+/* 순서 편집 (관리자) */
+.sumrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px;min-height:30px}
+.sumrow .sum{margin:0;min-width:0}
+.pill.sm{padding:4px 12px;font-size:13px;flex:none}
+.sumacts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.pill:disabled{opacity:.55;cursor:default}
+body.ordering .tools,body.ordering nav.tabs,body.ordering .fab{display:none}
+body.ordering .sumrow{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:12px;margin:0 0 10px;border-bottom:2px dashed var(--line)}
+.fk.ord{cursor:grab;-webkit-user-select:none;user-select:none}
+.fk.ord .qrmark{display:none}
+.ordn{position:absolute;top:11px;left:11px;min-width:26px;height:26px;border-radius:13px;background:var(--ink);color:var(--bg);font-family:var(--display);font-size:13px;display:grid;place-items:center;padding:0 7px;font-variant-numeric:tabular-nums}
+.ordbar{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:4px;padding:0 2px}
+.ordbar button{border:2px solid var(--line);background:var(--bg);border-radius:9px;padding:5px 0;font-size:12.5px;color:var(--ink);cursor:pointer}
+.ordbar button:disabled{opacity:.35;cursor:default}
+.sortable-ghost{opacity:.35}
+.sortable-chosen{border-color:var(--accent)!important;box-shadow:0 8px 20px rgba(60,20,40,.25)}
 .empty{border:2px dashed var(--line);border-radius:18px;padding:34px 18px;text-align:center;color:var(--ink-soft);background:var(--paper)}
 .empty strong{display:block;font-family:var(--display);font-weight:400;font-size:20px;color:var(--ink);margin-bottom:6px}
 .empty .btn{margin-top:14px}
@@ -252,7 +268,7 @@ form{display:flex;flex-direction:column;gap:14px}
     <div class="chips" id="chips"></div>
   </div>
 
-  <p class="sum" id="sum"></p>
+  <div class="sumrow"><p class="sum" id="sum"></p><span class="sumacts"><button type="button" class="pill sm" id="thumbBtn" hidden>목록 사진 선명하게</button><button type="button" class="pill sm" id="orderBtn" hidden>순서 편집</button></span></div>
   <div id="list"></div>
   <p class="note" id="status" hidden></p>
 </div>
@@ -260,6 +276,8 @@ form{display:flex;flex-direction:column;gap:14px}
 <button class="btn fab" id="addBtn" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>프렌카 등록하기</button>
 
 <div id="layer"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 
 <script type="module">
 import { firebaseConfig, ADMIN_EMAIL, USER_DOMAIN } from './firebase-config.js';
@@ -299,8 +317,8 @@ const canManage=r=>!!r&&(S.admin||(S.me&&r.owner===S.me.h));
 /* ---------- 이미지 줄이기 ---------- */
 function loadImg(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),i=new Image();i.onload=()=>{ok(i)};i.onerror=()=>{URL.revokeObjectURL(u);no(new Error('img'))};i.src=u})}
 function draw(img,max){const s=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));const c=document.createElement('canvas');c.width=Math.round(img.naturalWidth*s);c.height=Math.round(img.naturalHeight*s);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.imageSmoothingQuality='high';x.drawImage(img,0,0,c.width,c.height);return c}
-function fitJpeg(img,max,budget){let m=max,q=.86,d='';for(let k=0;k<12;k++){d=draw(img,m).toDataURL('image/jpeg',q);if(d.length<=budget)return d;if(q>.62)q-=.08;else m=Math.round(m*.85)}return d}
-function fitQr(img){for(const m of [720,600,480]){const d=draw(img,m).toDataURL('image/png');if(d.length<=90000)return d}return fitJpeg(img,600,90000)}
+function fitJpeg(img,max,budget){let m=max,q=.92,d='';for(let k=0;k<14;k++){d=draw(img,m).toDataURL('image/jpeg',q);if(d.length<=budget)return d;if(q>.8)q-=.04;else m=Math.round(m*.88)}return d}
+function fitQr(img){for(const m of [1000,800,640]){const d=draw(img,m).toDataURL('image/png');if(d.length<=260000)return d}return fitJpeg(img,900,260000)}
 
 /* ---------- 데이터 ---------- */
 function setStatus(t,bad){const el=$('#status');el.hidden=!t;el.textContent=t||'';el.classList.toggle('bad',!!bad)}
@@ -326,11 +344,39 @@ async function start(){
     render();
   });
   onSnapshot(query(collection(S.fs,'frenka'),orderBy('createdAt','desc')),{includeMetadataChanges:true},snap=>{
-    S.rows=snap.docs.map(d=>({id:d.id,...d.data()}));
+    S.rows=sortRows(snap.docs.map(d=>({id:d.id,...d.data()})));
     if(!snap.metadata.fromCache){S.loaded=true;clearTimeout(loadTimer);setStatus('')}
     else if(!S.loaded&&S.rows.length)S.loaded=true;
     render();
   },e=>{S.loaded=true;clearTimeout(loadTimer);setStatus('목록을 불러오지 못했어요 ('+e.code+'). 앱을 다시 열어 주세요.',true);render()});
+}
+
+/* ---------- 카드 순서 ---------- */
+const P=r=>typeof r.pos==='number'?r.pos:(Date.parse(r.createdAt)||0);
+const sortRows=a=>a.sort((x,y)=>P(y)-P(x));
+async function placeAt(id,to){
+  const rows=S.rows.slice(),from=rows.findIndex(r=>r.id===id);if(from<0)return;
+  const [r]=rows.splice(from,1);to=Math.max(0,Math.min(rows.length,to));rows.splice(to,0,r);
+  S.dirty=false;
+  if(from===to||rows.length<2){render();return}
+  const prev=rows[to-1],next=rows[to+1];
+  let p=!prev?Math.max(P(next)+1,Date.now()):!next?P(prev)-1000:(P(prev)+P(next))/2;
+  if(prev&&next&&!(P(prev)-p>1e-3&&p-P(next)>1e-3)){await renumber(rows);return}
+  const old=r.pos;r.pos=p;S.rows=rows;render();
+  try{await S.db.doc('frenka/'+id).update({pos:p})}
+  catch(e){if(old===undefined)delete r.pos;else r.pos=old;sortRows(S.rows);render();toast('순서를 저장하지 못했어요')}
+}
+async function renumber(rows){
+  const top=Math.max(Date.now(),P(rows[0]));
+  rows.forEach((r,i)=>{r.pos=top-i*1000});S.rows=rows;render();
+  try{for(const r of rows)await S.db.doc('frenka/'+r.id).update({pos:r.pos});toast('순서를 다시 정리했어요')}
+  catch(e){toast('순서를 저장하지 못했어요')}
+}
+function setOrder(on){
+  S.order=!!on;
+  if(S.order){S.tab='all';S.q='';S.char='';const q=$('#q');if(q)q.value=''}
+  document.body.classList.toggle('ordering',S.order);
+  render();
 }
 
 /* ---------- 렌더 ---------- */
@@ -345,6 +391,8 @@ function filtered(){
   });
 }
 function render(){
+  if(S.dragging){S.dirty=true;return}
+  if(S.order&&!S.admin){S.order=false;document.body.classList.remove('ordering')}
   // 헤더
   const lb=$('#loginBtn');
   lb.innerHTML=ICON_USER+(S.me?`<span>${esc(S.me.nick||'내 번호')}</span>`:'<span>로그인</span>')+(S.admin?'<span class="admin">관리자</span>':'');
@@ -362,8 +410,27 @@ function render(){
   if(!S.loaded&&!S.rows.length){L.innerHTML='<div class="empty"><strong>프렌카를 불러오는 중</strong>잠시만 기다려 주세요.</div>';$('#sum').textContent='';return}
   if(S.tab==='mine'&&!S.me){L.innerHTML='<div class="empty"><strong>로그인하면 내 프렌카만 모아 볼 수 있어요</strong>등록할 때 쓴 번호로 로그인해 주세요.<br><button type="button" class="btn" data-act="login">로그인</button></div>';$('#sum').textContent='';return}
   if(!S.rows.length||(S.tab==='mine'&&!mine)){L.innerHTML='<div class="empty"><strong>'+(S.tab==='mine'?'아직 등록한 프렌카가 없어요':'아직 등록된 프렌카가 없어요')+'</strong>프렌카 이미지와 QR 코드 이미지만 있으면 바로 등록할 수 있어요.<br><button type="button" class="btn" data-act="add">첫 프렌카 등록하기</button></div>';$('#sum').textContent='';return}
-  $('#sum').textContent=(S.q||S.char)?`${rows.length}장 찾았어요`:`${rows.length}장`;
+  const tb=$('#thumbBtn');tb.hidden=!(S.admin&&S.order);if(!S.thumbing)tb.textContent='목록 사진 선명하게';
+  const ob=$('#orderBtn');ob.hidden=!S.admin;ob.textContent=S.order?'완료':'순서 편집';ob.classList.toggle('on',!!S.order);
+  $('#sum').textContent=S.order?'카드를 길게 눌러 끌거나 화살표로 옮기세요. 바로 저장돼요.':(S.q||S.char)?`${rows.length}장 찾았어요`:`${rows.length}장`;
   if(!rows.length){L.innerHTML='<div class="empty"><strong>조건에 맞는 프렌카가 없어요</strong>검색어를 줄이거나 캐릭터 필터를 풀어 보세요.</div>';return}
+  if(S.order){
+    const n=rows.length;
+    L.innerHTML='<div class="grid" id="ordGrid">'+rows.map((r,i)=>`<article class="fk ord" data-id="${esc(r.id)}">
+      <div class="pic">${r.thumb?`<img src="${esc(r.thumb)}" alt="" draggable="false">`:''}</div>
+      <span class="ordn">${i+1}</span>
+      <div class="txt">${r.char?`<span class="ch">${esc(r.char)}</span>`:''}<span class="ko">${esc(r.coordKo||r.coordJa||'이름 없는 코디')}</span></div>
+      <div class="ordbar">
+        <button type="button" data-mv="0" data-id="${esc(r.id)}" ${i===0?'disabled':''}>맨 앞</button>
+        <button type="button" data-mv="${i-1}" data-id="${esc(r.id)}" ${i===0?'disabled':''} aria-label="앞으로">◀</button>
+        <button type="button" data-mv="${i+1}" data-id="${esc(r.id)}" ${i===n-1?'disabled':''} aria-label="뒤로">▶</button>
+      </div>
+    </article>`).join('')+'</div>';
+    if(window.Sortable)Sortable.create($('#ordGrid'),{animation:150,delay:180,delayOnTouchOnly:true,filter:'.ordbar',preventOnFilter:false,
+      onStart(){S.dragging=true},
+      onEnd(e){S.dragging=false;if(e.oldIndex!==e.newIndex)placeAt(e.item.dataset.id,e.newIndex);else if(S.dirty){S.dirty=false;render()}}});
+    return;
+  }
   L.innerHTML='<div class="grid">'+rows.map(r=>{
     const own=S.me&&r.owner===S.me.h;
     return `<article class="fk">
@@ -501,7 +568,7 @@ function setDrop(id,src){const d=$('#'+id);if(!d)return;d.classList.add('has');d
 async function pick(file,kind){
   if(!file)return;$('#fErr').textContent='';
   try{const img=await loadImg(file);
-    if(kind==='card'){draft.card=fitJpeg(img,1000,140000);draft.thumb=fitJpeg(img,360,24000);setDrop('dropCard',draft.card)}
+    if(kind==='card'){draft.card=fitJpeg(img,1600,620000);draft.thumb=fitJpeg(img,640,75000);setDrop('dropCard',draft.card)}
     else{draft.qr=fitQr(img);setDrop('dropQr',draft.qr)}
     URL.revokeObjectURL(img.src);
   }catch(e){$('#fErr').textContent='이미지를 읽지 못했어요. JPG나 PNG 파일로 다시 골라 주세요.'}
@@ -527,7 +594,7 @@ async function saveForm(){
       const ref=S.db.collection('frenka').doc();
       await S.db.doc('frenkaImg/'+ref.id).set({card:draft.card,qr:draft.qr,owner:S.me.h});
       imgCache[ref.id]={card:draft.card,qr:draft.qr};
-      await ref.set({...meta,thumb:draft.thumb,owner:S.me.h,nick:S.me.nick||'',createdAt:now,updatedAt:now});
+      await ref.set({...meta,thumb:draft.thumb,owner:S.me.h,nick:S.me.nick||'',createdAt:now,updatedAt:now,pos:Date.now()});
       close();toast('프렌카를 등록했어요');
     }
   }catch(e){
@@ -620,7 +687,7 @@ async function importBackup(file){
     msg.textContent='옮기는 중';
     const ops=[];
     mem.forEach(([h,v])=>ops.push(['members/'+h,{nick:v.nick||'',createdAt:v.createdAt||new Date().toISOString()}]));
-    rows.forEach(([id,v])=>{const k=['char','coordKo','coordJa','irochi','memo','thumb','owner','nick','createdAt','updatedAt'];const o={};k.forEach(x=>{if(v[x]!=null)o[x]=v[x]});
+    rows.forEach(([id,v])=>{const k=['char','coordKo','coordJa','irochi','memo','thumb','owner','nick','createdAt','updatedAt','pos'];const o={};k.forEach(x=>{if(v[x]!=null)o[x]=v[x]});
       if(imgs[id])ops.push(['frenkaImg/'+id,{card:imgs[id].card||'',qr:imgs[id].qr||'',owner:o.owner}]);
       ops.push(['frenka/'+id,o])});
     // 문서 크기가 커서 몇 개씩 나눠서 씀
@@ -636,7 +703,8 @@ function showSettings(){
     <p class="hint">포인트 색을 고르면 버튼과 배경의 옅은 색이 함께 바뀌어요. 이 기기에만 저장돼요.</p>
     <div class="sec"><div class="swatches" id="sws">${ACCENTS.map(([n,c])=>`<button type="button" class="sw" data-c="${c}" aria-pressed="${c.toLowerCase()===pref.accent.toLowerCase()}"><i style="background:${c}"></i>${n}</button>`).join('')}</div>
       <label class="custom" for="swC"><input id="swC" type="color" value="${pref.accent}">${pre?'직접 고르기':'직접 고른 색'}</label></div>
-    <div class="sec"><h3>화면</h3><div class="seg3" id="thm">${[['auto','시스템'],['light','밝게'],['dark','어둡게']].map(([v,n])=>`<button type="button" data-v="${v}" aria-pressed="${pref.theme===v}">${n}</button>`).join('')}</div></div>`,true);
+    <div class="sec"><h3>화면</h3><div class="seg3" id="thm">${[['auto','시스템'],['light','밝게'],['dark','어둡게']].map(([v,n])=>`<button type="button" data-v="${v}" aria-pressed="${pref.theme===v}">${n}</button>`).join('')}</div></div>
+    <p class="hint" style="margin-top:16px;text-align:right">앱 버전 2026.11.18</p>`,true);
   $('#sws').onclick=e=>{const b=e.target.closest('[data-c]');if(!b)return;pref.accent=b.dataset.c;LS.set('fk.accent',pref.accent);applyTheme();showSettings()};
   $('#swC').oninput=e=>{document.documentElement.style.setProperty('--accent',e.target.value)};
   $('#swC').onchange=e=>{pref.accent=e.target.value;LS.set('fk.accent',pref.accent);applyTheme();showSettings()};
@@ -649,9 +717,31 @@ $('#tabAll').onclick=()=>{S.tab='all';S.char='';render()};
 $('#tabMine').onclick=()=>{if(!S.me){showLogin()}S.tab='mine';S.char='';render()};
 $('#chips').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.char=b.dataset.char;render()};
 $('#addBtn').onclick=()=>showForm();
+$('#orderBtn').onclick=()=>setOrder(!S.order);
+$('#thumbBtn').onclick=rebuildThumbs;
+/* 예전에 작게 저장된 목록 사진을 원본 사진으로 다시 만들기 (관리자) */
+async function rebuildThumbs(){
+  if(!S.admin||S.thumbing)return;
+  const tb=$('#thumbBtn'),list=S.rows.slice();let done=0,skip=0;
+  S.thumbing=true;tb.disabled=true;
+  for(const r of list){
+    tb.textContent=`사진 정리 중 ${done+skip+1}/${list.length}`;
+    try{
+      const im=await getImgs(r.id);if(!im.card){skip++;continue}
+      const img=new Image();img.src=im.card;await img.decode();
+      if(Math.max(img.naturalWidth,img.naturalHeight)<=380&&r.thumb&&r.thumb.length>20000){skip++;continue}
+      const t=fitJpeg(img,640,75000);
+      if(r.thumb&&t.length<=r.thumb.length){skip++;continue}
+      await S.db.doc('frenka/'+r.id).update({thumb:t});done++;
+    }catch(e){skip++}
+  }
+  S.thumbing=false;tb.disabled=false;render();
+  toast(done?`목록 사진 ${done}장을 선명하게 바꿨어요`:'바꿀 목록 사진이 없어요');
+}
 $('#loginBtn').onclick=()=>showLogin();
 $('#setBtn').onclick=showSettings;
 document.addEventListener('click',e=>{
+  const mv=e.target.closest('[data-mv]');if(mv){if(!mv.disabled)placeAt(mv.dataset.id,+mv.dataset.mv);return}
   const t=e.target.closest('[data-act],[data-open],[data-edit],[data-del]');if(!t)return;
   if(t.dataset.open)return showDetail(t.dataset.open);
   if(t.dataset.edit)return showForm(t.dataset.edit);
